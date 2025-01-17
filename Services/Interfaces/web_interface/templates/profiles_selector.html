@@ -24,7 +24,7 @@
     <div class="card-header d-flex justify-content-between">
         <div>
             <h3>
-                Select the profile your OctoBot should use
+                Select the profile your Sullam OctoBot should use
             </h3>
         </div>
         <div class="text-right mt-4">
@@ -49,7 +49,7 @@
                         <a class="nav-link primary-tab-selector {{ 'active show' if use_cloud else '' }}" id="cloud-profiles-tab" data-toggle="tab" href="#cloud-profiles" role="tab"
                            aria-controls="cloud-profiles"
                            aria-selected="{{ 'true' if use_cloud else 'false' }}">
-                            <h5>From OctoBot cloud</h5>
+                            <h5>From Sullam OctoBot cloud</h5>
                         </a>
                     </li>
                 </ul>
@@ -57,7 +57,7 @@
             <div class="tab-content my-2" id="tabcontent">
                 <div class="tab-pane fade {{ '' if use_cloud else 'active show' }}" id="your-profiles" role="tab-your-profiles" aria-labelledby="your-profiles-tab">
                     <h4 class="text-center mt-4">
-                        Use ready-made profiles from the open-source OctoBot and your custom profiles.
+                        Use ready-made profiles from the open-source Sullam OctoBot and your custom profiles.
                     </h4>
                     <div class="row mx-0 mt-1">
                         {% for profile in profiles %}
@@ -74,7 +74,7 @@
                                                     next=url_for('trading_type_selector', reboot=True, onboarding=onboarding))}}">
                         <h4 class="text-center mt-4">
                             Use <a href="{{OCTOBOT_COMMUNITY_URL}}/strategies?utm_source=octobot&utm_medium=dk&utm_campaign=regular_open_source_content&utm_content=profile_selector" target="_blank">OctoBot cloud strategies</a>
-                            directly from your OctoBot.
+                            directly from your Sullam OctoBot.
                         </h4>
                         {{ m_cloud_strategies_selector.cloud_strategies_selector(cloud_strategies, LOCALE, "select-profile") }}
                     </div>

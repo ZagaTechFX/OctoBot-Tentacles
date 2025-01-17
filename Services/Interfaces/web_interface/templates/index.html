@@ -7,7 +7,7 @@
     {% if display_ph_launch %}
     <div class="alert alert-primary text-center" role="alert">
         <h5 class="">
-            🎉 Major news! OctoBot is launching on Product Hunt {{'today' if is_launching else 'on the 10th of July'}}.
+            🎉 Major news! Sullam OctoBot is launching on Product Hunt {{'today' if is_launching else 'on the 10th of July'}}.
             {% if not is_launching %}
             <button type="button" class="close" data-dismiss="alert" aria-label="Close" data-role="hide-announcement" data-url="{{url_for('api.hide_announcement', key='product_hunt_announcement')}}">
                 <span aria-hidden="true">&times;</span>
@@ -39,7 +39,7 @@
         {% if display_trading_delay_info %}
             <div class="alert alert-info mt-2" role="alert">
                 <i class="fa-regular fa-lightbulb"></i>
-                A new trading mode has just been selected, OctoBot is now looking for trading opportunities.
+                A new trading mode has just been selected, Sullam OctoBot is now looking for trading opportunities.
                 Depending on the profile settings, a few hours might be required before the first orders are created.
                 Use <a href="backtesting">Backesting</a> to quickly test trading strategies.
             </div>
@@ -47,14 +47,14 @@
         {% if is_in_stating_community_env() %}
         <div class="card my-2 my-md-4">
             <div class="card-header"><h2>
-                Welcome to the OctoBot beta environment
+                Welcome to the Sullam OctoBot beta environment
                 </h2>
             </div>
             <div class="card-body card-text">
                 <div class="alert alert-info">
                     When the beta environment is enabled, you will be connected to the "in development"
-                    version of OctoBot cloud (<a href="{{OCTOBOT_COMMUNITY_LANDING_URL}}?utm_source=octobot&utm_medium=dk&utm_campaign=beta_program&utm_content=dashboard">{{OCTOBOT_COMMUNITY_LANDING_URL}})</a>.
-                    The beta OctoBot cloud has its own accounts and products.
+                    version of Sullam OctoBot cloud (<a href="{{OCTOBOT_COMMUNITY_LANDING_URL}}?utm_source=octobot&utm_medium=dk&utm_campaign=beta_program&utm_content=dashboard">{{OCTOBOT_COMMUNITY_LANDING_URL}})</a>.
+                    The beta Sullam OctoBot cloud has its own accounts and products.
                     Please login using your beta account.
                 </div>
             </div>
@@ -141,7 +141,7 @@
             </div>
             <div class="card-body d-none text-center" id="loadingMarketsDiv">
                 <h2>
-                    OctoBot is starting, markets will be refreshed when exchanges will be reachable.
+                    Sullam OctoBot is starting, markets will be refreshed when exchanges will be reachable.
                 </h2>
             </div>
             <div class="card-body text-center" name="loadingSpinner">

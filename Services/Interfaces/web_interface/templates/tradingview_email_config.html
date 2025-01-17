@@ -28,14 +28,14 @@
 <div class="card w-100 w-lg-50 mx-auto">
     <div class="card-header">
         <h2>
-            Configure OctoBot to trade using TradingView email alerts
+            Configure Sullam OctoBot to trade using TradingView email alerts
         </h2>
     </div>
     <div class="card-body">
         {% if not is_community_authenticated %}
         <div class="text-center">
             <p>
-                Please login to your OctoBot account to configure your TradingView email alerts.
+                Please login to your Sullam OctoBot account to configure your TradingView email alerts.
             </p>
             <a type="button" class="btn btn-primary btn-lg my-4"
                href="{{ url_for('community_login', next='tradingview_email_config') }}">
@@ -43,7 +43,7 @@
             </a>
             <p>
                 Note: The <a class="font-weight-bolder" href="{{url_for('extensions')}}">{{OCTOBOT_EXTENSION_PACKAGE_1_NAME}}</a>
-                is required to connect your OctoBot to TradingView email alerts.
+                is required to connect your Sullam OctoBot to TradingView email alerts.
             </p>
         </div>
         {% elif has_open_source_package() %}
@@ -55,7 +55,7 @@
                     {{ tutorial_article(
                         "Trading using email alerts",
                         "img/tradingview/tradingview-logo.png",
-                        "Follow those steps to add your OctoBot TradingView email address to your TradingView account "
+                        "Follow those steps to add your Sullam OctoBot TradingView email address to your TradingView account "
                      "if your TradingView alert email is <span class='font-weight-bolder'>unset or different</span> from: <p
                             class='font-weight-bolder text-center pointer-cursor'
                             data-role='copy-to-clipboard' data-name='Email address' data-value='" + tradingview_email_address + "'
@@ -87,9 +87,9 @@
                 </div>
                 <div class="card-body pt-1 tutorial-step d-none" data-step-id="4">
                     {{ tutorial_article(
-                        "3. Enter your OctoBot alert email address",
+                        "3. Enter your Sullam OctoBot alert email address",
                         "img/tradingview/tradingview-alert-email-form.png",
-                        "Enter your OctoBot alert email address: <p
+                        "Enter your Sullam OctoBot alert email address: <p
                             class='font-weight-bolder text-center pointer-cursor'
                             data-role='copy-to-clipboard' data-name='Email address' data-value='" + tradingview_email_address + "'
                             data-toggle='tooltip' data-placement='bottom' title='Click to copy'>"+ tradingview_email_address + "</p>
@@ -117,22 +117,22 @@
                          data-role='copy-to-clipboard' data-name='Email address' data-value='" + tradingview_email_address + "'
                          data-toggle='tooltip' data-placement='bottom' title='Click to copy'>"+ tradingview_email_address + "</span><br/>
                          <span class='font-weight-bolder' id='verification-code-error-content'></span><br/>Please
-                         <a href='mailto:contact@octobot.cloud?subject=Open source TradingView email alert config issue'>
-                         contact the support</a> if your believe this is an issue with OctoBot.</span></p>"
+                         <a href='mailto:zagatechict@gmail.com?subject=Open source TradingView email alert config issue'>
+                         contact the support</a> if your believe this is an issue with Sullam OctoBot.</span></p>"
                     ) }}
                 </div>
                 <div class="card-body pt-1 tutorial-step d-none" data-step-id="6">
                     {{ tutorial_article(
                         "You are all set!",
                         "img/tradingview/tradingview-alert-email-form-completed.png",
-                        "🎉 TradingView will now notify your OctoBot using emails when your alerts will fire."
+                        "🎉 TradingView will now notify your Sullam OctoBot using emails when your alerts will fire."
                     ) }}
                     {{ tutorial_article(
                         "Last words",
                         "img/tradingview/use-email-alerts.png",
                         "<ul><li>Remember to check <span class='font-weight-bolder'>Use-Email-Alerts</span> in your <a href='/accounts#panelServices'>TradingView interface configuration</a> to
-                        make your OctoBot listen to email alerts.</li>
-                        <li>Selecting a TradingView-related profile such as 'TradingView Signals Trading' is necessary to trade using TradingView on OctoBot.</li><li>Avoid enabling both email and webhook alerts on TradingView otherwise alerts will trigger
+                        make your Sullam OctoBot listen to email alerts.</li>
+                        <li>Selecting a TradingView-related profile such as 'TradingView Signals Trading' is necessary to trade using TradingView on Sullam OctoBot.</li><li>Avoid enabling both email and webhook alerts on TradingView otherwise alerts will trigger
                         twice your OctoBot.</li></ul> <p class='text-center'><a type='button' class='btn btn-primary'
                         href='accounts#panelServices'>Back to TradingView configuration</a></p>"
                     ) }}
@@ -141,7 +141,7 @@
         {% else %}
             <div class="alert alert-info">
                 Using the <a class="font-weight-bolder" href="{{url_for('extensions')}}">{{OCTOBOT_EXTENSION_PACKAGE_1_NAME}}</a>,
-                your OctoBot can trade using TradingView free email alerts.
+                your Sullam OctoBot can trade using TradingView free email alerts.
             </div>
             <div class="text-center">
                 <a type="button" class="btn btn-primary btn-lg"

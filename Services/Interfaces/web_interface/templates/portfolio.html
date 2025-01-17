@@ -8,7 +8,7 @@
     {% macro display_init_warning() -%}
         {% if initializing_currencies_prices %}
         <div class="alert alert-warning" role="alert">
-            OctoBot is currently initializing prices for {{ initializing_currencies_prices | join(", ") }}.
+            Sullam OctoBot is currently initializing prices for {{ initializing_currencies_prices | join(", ") }}.
             These assets might take a few seconds to load.
         </div>
         {% endif %}
@@ -73,7 +73,7 @@
                     <div class="card-subtitle">
                         <h2 class="text-muted">Nothing there.</h2>
                         <p>
-                            If a trader is enabled, please check <a href="{{url_for('logs')}}">your OctoBot logs</a>.
+                            If a trader is enabled, please check <a href="{{url_for('logs')}}">your Sullam OctoBot logs</a>.
                             There might be an issue with your exchange credentials.
                         </p>
                     </div>
