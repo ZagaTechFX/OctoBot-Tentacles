@@ -28,6 +28,7 @@ import octobot_trading.exchanges.connectors.ccxt.constants as ccxt_constants
 import octobot_commons.constants as commons_constants
 import octobot_trading.constants as constants
 import octobot_trading.enums as trading_enums
+import octobot.community
 
 
 def _kucoin_retrier(f):
@@ -79,6 +80,9 @@ class Kucoin(exchanges.RestExchange):
     CAN_HAVE_DELAYED_CANCELLED_ORDERS = True
     DEFAULT_CONNECTOR_CLASS = KucoinConnector
 
+    # Set False when the leverage value is set via something else that a set_leverage api (from orders for example)
+    UPDATE_LEVERAGE_FROM_API = False  # leverage is set via orders on kucoin
+
     FAKE_DDOS_ERROR_INSTANT_RETRY_COUNT = 5
     INSTANT_RETRY_ERROR_CODE = "429000"
     FUTURES_CCXT_CLASS_NAME = "kucoinfutures"
@@ -127,6 +131,20 @@ class Kucoin(exchanges.RestExchange):
         # 'kucoin The order does not exist.'
         ("order does not exist",),
     ]
+    # text content of errors due to a closed position on the exchange. Relevant for reduce-only orders
+    EXCHANGE_CLOSED_POSITION_ERRORS: typing.List[typing.Iterable[str]] = [
+        # 'kucoinfutures No open positions to close.'
+        ("no open positions to close", )
+    ]
+    # text content of errors due to an order that would immediately trigger if created. Relevant for stop losses
+    EXCHANGE_ORDER_IMMEDIATELY_TRIGGER_ERRORS: typing.List[typing.Iterable[str]] = [
+        # doesn't seem to happen on kucoin
+    ]
+    # text content of errors due to an order that can't be cancelled on exchange (because filled or already cancelled)
+    EXCHANGE_ORDER_UNCANCELLABLE_ERRORS: typing.List[typing.Iterable[str]] = [
+        ('order cannot be canceled', ),
+        ('order_not_exist_or_not_allow_to_cancel', )
+    ]
 
     DEFAULT_BALANCE_CURRENCIES_TO_FETCH = ["USDT"]
 
@@ -134,10 +152,11 @@ class Kucoin(exchanges.RestExchange):
     def get_name(cls):
         return 'kucoin'
 
-    def get_rest_name(self):
-        if self.exchange_manager.is_future:
-            return self.FUTURES_CCXT_CLASS_NAME
-        return self.get_name()
+    @classmethod
+    def get_rest_name(cls, exchange_manager):
+        if exchange_manager.is_future:
+            return cls.FUTURES_CCXT_CLASS_NAME
+        return cls.get_name()
 
     def get_adapter_class(self):
         return KucoinCCXTAdapter
@@ -176,6 +195,10 @@ class Kucoin(exchanges.RestExchange):
                         else:
                             # only subaccounts have a subUserId: if this condition is True, we are on the main account
                             account_id = account["subName"]
+                if account_id and self.exchange_manager.is_future:
+                    account_id = octobot.community.to_community_exchange_internal_name(
+                        account_id, commons_constants.CONFIG_EXCHANGE_FUTURE
+                    )
             if subaccount_id:
                 # there is at least a subaccount: ensure the current account is the main account as there is no way
                 # to know the id of the current account (only a list of existing accounts)
@@ -310,20 +333,6 @@ class Kucoin(exchanges.RestExchange):
             ))
             return balance
         return await super().get_balance(**kwargs)
-
-    """
-    Margin and leverage
-    """
-
-    async def set_symbol_leverage(self, symbol: str, leverage: float, **kwargs):
-        """
-        Set the symbol leverage
-        :param symbol: the symbol
-        :param leverage: the leverage
-        :return: the update result
-        """
-        # leverage is set via orders on kucoin
-        return None
 
     @_kucoin_retrier
     async def get_open_orders(self, symbol=None, since=None, limit=None, **kwargs) -> list:
@@ -483,7 +492,7 @@ class KucoinCCXTAdapter(exchanges.CCXTAdapter):
         fixed = super().fix_order(raw, symbol=symbol, **kwargs)
         self._ensure_fees(fixed)
         if self.connector.exchange_manager.is_future and \
-                fixed[trading_enums.ExchangeConstantsOrderColumns.COST.value] is not None:
+                fixed.get(trading_enums.ExchangeConstantsOrderColumns.COST.value) is not None:
             fixed[trading_enums.ExchangeConstantsOrderColumns.COST.value] = \
                 fixed[trading_enums.ExchangeConstantsOrderColumns.COST.value] * \
                 float(raw_order_info.get(self.KUCOIN_LEVERAGE, 1))
@@ -507,18 +516,37 @@ class KucoinCCXTAdapter(exchanges.CCXTAdapter):
             up: Triggers when the price reaches or goes above the stopPrice.
             """
             side = fixed.get(trading_enums.ExchangeConstantsOrderColumns.SIDE.value)
-            if side == trading_enums.TradeOrderSide.BUY.value:
-                if trigger_direction in ("up", "loss"):
-                    updated_type = trading_enums.TradeOrderType.STOP_LOSS.value
-                elif trigger_direction in ("down", "entry"):
-                    updated_type = trading_enums.TradeOrderType.TAKE_PROFIT.value
+            trigger_above = False
+            if trigger_direction in ("up", "loss"):
+                trigger_above = True
+            elif trigger_direction in ("down", "loss"):
+                trigger_above = False
             else:
-                if trigger_direction in ("up", "entry"):
-                    updated_type = trading_enums.TradeOrderType.TAKE_PROFIT.value
-                elif trigger_direction in ("down", "loss"):
+                self.logger.error(
+                    f"Unknown [{self.connector.exchange_manager.exchange_name}] order trigger direction "
+                    f"{trigger_direction} ({fixed})"
+                )
+            stop_price = fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.STOP_PRICE.value, None)
+            if side == trading_enums.TradeOrderSide.BUY.value:
+                if trigger_above:
+                    updated_type = trading_enums.TradeOrderType.STOP_LOSS.value
+                else:
+                    # take profits are not yet handled as such: consider them as limit orders
+                    updated_type = trading_enums.TradeOrderType.LIMIT.value # waiting for TP handling
+                    if not fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value]:
+                        fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value] = stop_price # waiting for TP handling
+            else:
+                # selling
+                if trigger_above:
+                    # take profits are not yet handled as such: consider them as limit orders
+                    updated_type = trading_enums.TradeOrderType.LIMIT.value # waiting for TP handling
+                    if not fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value]:
+                        fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value] = stop_price # waiting for TP handling
+                else:
                     updated_type = trading_enums.TradeOrderType.STOP_LOSS.value
             # stop loss are not tagged as such by ccxt, force it
             fixed[trading_enums.ExchangeConstantsOrderColumns.TYPE.value] = updated_type
+            fixed[trading_enums.ExchangeConstantsOrderColumns.TRIGGER_ABOVE.value] = trigger_above
         return fixed
 
     def parse_funding_rate(self, fixed, from_ticker=False, **kwargs):

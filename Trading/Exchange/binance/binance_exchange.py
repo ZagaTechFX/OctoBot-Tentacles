@@ -81,6 +81,19 @@ class Binance(exchanges.RestExchange):
         # Binance ex: InvalidOrder binance {"code":-2010,"msg":"This symbol is not permitted for this account."}
         ("symbol", "not permitted", "for this account"),
     ]
+    # text content of errors due to a closed position on the exchange. Relevant for reduce-only orders
+    EXCHANGE_CLOSED_POSITION_ERRORS: typing.List[typing.Iterable[str]] = [
+        # doesn't seem to happen on binance
+    ]
+    # text content of errors due to an order that would immediately trigger if created. Relevant for stop losses
+    EXCHANGE_ORDER_IMMEDIATELY_TRIGGER_ERRORS: typing.List[typing.Iterable[str]] = [
+        # binance {"code":-2021,"msg":"Order would immediately trigger."}
+        ("order would immediately trigger", )
+    ]
+    # text content of errors due to an order that can't be cancelled on exchange (because filled or already cancelled)
+    EXCHANGE_ORDER_UNCANCELLABLE_ERRORS: typing.List[typing.Iterable[str]] = [
+        ('Unknown order sent', )
+    ]
 
     BUY_STR = "BUY"
     SELL_STR = "SELL"
@@ -243,6 +256,14 @@ class Binance(exchanges.RestExchange):
         # leverage is in position
         return self.connector.adapter.adapt_leverage(await self.get_position(symbol))
 
+    async def get_all_currencies_price_ticker(self, **kwargs: dict) -> typing.Optional[dict[str, dict]]:
+        if "subType" in kwargs or not self.exchange_manager.is_future:
+            return await super().get_all_currencies_price_ticker(**kwargs)
+        # futures with unspecified subType: fetch both linear and inverse tickers
+        linear_tickers = await super().get_all_currencies_price_ticker(subType=self.LINEAR_TYPE, **kwargs)
+        inverse_tickers = await super().get_all_currencies_price_ticker(subType=self.INVERSE_TYPE, **kwargs)
+        return {**linear_tickers, **inverse_tickers}
+
     async def set_symbol_margin_type(self, symbol: str, isolated: bool, **kwargs: dict):
         """
         Set the symbol margin type
@@ -257,8 +278,14 @@ class Binance(exchanges.RestExchange):
 
 
 class BinanceCCXTAdapter(exchanges.CCXTAdapter):
-    STOP_MARKET = 'stop_market'
-    STOP_ORDERS = [STOP_MARKET]
+    STOP_ORDERS = [
+        "stop_market", "stop", # futures
+        "stop_loss", "stop_loss_limit"  # spot
+    ]
+    TAKE_PROFITS_ORDERS = [
+        "take_profit_market", "take_profit_limit",    # futures
+        "take_profit"  # spot
+    ]
     BINANCE_DEFAULT_FUNDING_TIME = 8 * commons_constants.HOURS_TO_SECONDS
 
     def fix_order(self, raw, symbol=None, **kwargs):
@@ -270,15 +297,34 @@ class BinanceCCXTAdapter(exchanges.CCXTAdapter):
         return fixed
 
     def _adapt_order_type(self, fixed):
-        if fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.TYPE.value, None) in self.STOP_ORDERS:
-            stop_price = fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.STOP_PRICE.value, None)
-            updated_type = trading_enums.TradeOrderType.UNKNOWN.value
-            if stop_price is not None:
-                updated_type = trading_enums.TradeOrderType.STOP_LOSS.value
-            else:
-                self.logger.error(f"Unknown order type, order: {fixed}")
-            # stop loss and take profits are not tagged as such by ccxt, force it
-            fixed[trading_enums.ExchangeConstantsOrderColumns.TYPE.value] = updated_type
+        if order_type := fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.TYPE.value, None):
+            is_stop = order_type.lower() in self.STOP_ORDERS
+            is_tp = order_type.lower() in self.TAKE_PROFITS_ORDERS
+            if is_stop or is_tp:
+                stop_price = fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.STOP_PRICE.value, None)
+                selling = (
+                    fixed.get(ccxt_enums.ExchangeOrderCCXTColumns.SIDE.value, None)
+                    == trading_enums.TradeOrderSide.SELL.value
+                )
+                updated_type = trading_enums.TradeOrderType.UNKNOWN.value
+                trigger_above = False
+                if is_stop:
+                    updated_type = trading_enums.TradeOrderType.STOP_LOSS.value
+                    trigger_above = not selling # sell stop loss triggers when price is lower than target
+                elif is_tp:
+                    # updated_type = trading_enums.TradeOrderType.TAKE_PROFIT.value
+                    # take profits are not yet handled as such: consider them as limit orders
+                    updated_type = trading_enums.TradeOrderType.LIMIT.value # waiting for TP handling
+                    if not fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value]:
+                        fixed[trading_enums.ExchangeConstantsOrderColumns.PRICE.value] = stop_price # waiting for TP handling
+                    trigger_above = selling # sell take profit triggers when price is higher than target
+                else:
+                    self.logger.error(
+                        f"Unknown [{self.connector.exchange_manager.exchange_name}] order type, order: {fixed}"
+                    )
+                # stop loss and take profits are not tagged as such by ccxt, force it
+                fixed[trading_enums.ExchangeConstantsOrderColumns.TYPE.value] = updated_type
+                fixed[trading_enums.ExchangeConstantsOrderColumns.TRIGGER_ABOVE.value] = trigger_above
         return fixed
 
     def fix_trades(self, raw, **kwargs):
